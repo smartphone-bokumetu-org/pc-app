@@ -2,11 +2,32 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>My Electron App</title>
+  <title>作業状態トグル</title>
 </head>
 <body>
-  <h1>こんにちは、Electron!</h1>
-  <p>これはElectronで作ったアプリです。</p>
+  <h1>作業状態トグル</h1>
+  <button id="toggleButton">作業中</button>
+  <p id="status">現在の状態: 作業中</p>
+
+  <script>
+    const button = document.getElementById('toggleButton');
+    const statusText = document.getElementById('status');
+    let isWorking = true;
+
+    button.addEventListener('click', () => {
+      isWorking = !isWorking;
+      button.textContent = isWorking ? '作業中' : '休憩中';
+      statusText.textContent = `現在の状態: ${isWorking ? '作業中' : '休憩中'}`;
+
+      // サーバーに状態を送信
+      fetch('http://127.0.0.1:8000/status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ isWorking })
+      });
+    });
+  </script>
 </body>
 </html>
-
