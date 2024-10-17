@@ -1,36 +1,27 @@
 const { app, BrowserWindow } = require('electron');
-const http = require('http'); // HTTPモジュールを追加
+const WebSocket = require('ws'); // WebSocketモジュールを追加
 
 let mainWindow;
 let isWorking = true; // 初期状態
 
 function createWindow () {
-  // Webサーバーを作成
-  const server = http.createServer((req, res) => {
-    if (req.method === 'POST' && req.url === '/status') {
-      let body = '';
-      req.on('data', chunk => {
-        body += chunk.toString();
-      });
-      req.on('end', () => {
-        const data = JSON.parse(body);
+  // WebSocketサーバーを作成
+  const wss = new WebSocket.Server({ port: 8000 });
+
+  wss.on('connection', (ws) => {
+    ws.on('message', (message) => {
+      const data = JSON.parse(message);
+      if (data.type === 'status') {
         isWorking = data.isWorking;
-        res.writeHead(200, {'Content-Type': 'application/json'});
-        res.end(JSON.stringify({ success: true }));
-      });
-    } else if (req.method === 'GET' && req.url === '/status') {
-      res.writeHead(200, {'Content-Type': 'application/json'});
-      res.end(JSON.stringify({ isWorking }));
-    } else {
-      res.writeHead(404, {'Content-Type': 'text/plain'});
-      res.end('Not Found');
-    }
+        ws.send(JSON.stringify({ success: true }));
+      }
+    });
+
+    // 初期状態を送信
+    ws.send(JSON.stringify({ isWorking }));
   });
 
-  // サーバーをポート3000でリッスン
-  server.listen(8000, '127.0.0.1', () => {
-    console.log('Server running at http://127.0.0.1:8000/');
-  });
+  console.log('WebSocket server running at ws://127.0.0.1:8000/');
 
   mainWindow = new BrowserWindow({
     width: 800,
