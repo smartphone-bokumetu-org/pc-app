@@ -14,19 +14,29 @@
     const statusText = document.getElementById('status');
     let isWorking = true;
 
+    // WebSocket接続を作成
+    const socket = new WebSocket('ws://127.0.0.1:8000');
+
+    socket.addEventListener('open', () => {
+      console.log('WebSocket connection opened');
+    });
+
+    socket.addEventListener('message', (event) => {
+      const data = JSON.parse(event.data);
+      if (data.isWorking !== undefined) {
+        isWorking = data.isWorking;
+        button.textContent = isWorking ? '作業中' : '休憩中';
+        statusText.textContent = `現在の状態: ${isWorking ? '作業中' : '休憩中'}`;
+      }
+    });
+
     button.addEventListener('click', () => {
       isWorking = !isWorking;
       button.textContent = isWorking ? '作業中' : '休憩中';
       statusText.textContent = `現在の状態: ${isWorking ? '作業中' : '休憩中'}`;
 
       // サーバーに状態を送信
-      fetch('http://127.0.0.1:8000/status', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ isWorking })
-      });
+      socket.send(JSON.stringify({ type: 'status', isWorking }));
     });
   </script>
 </body>
