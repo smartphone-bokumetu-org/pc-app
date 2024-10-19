@@ -2,17 +2,103 @@
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
-  <title>作業状態トグル</title>
+  <title>作業タイマー</title>
+  <link rel="stylesheet" type="text/css" href="styles.css">
 </head>
 <body>
-  <h1>作業状態トグル</h1>
-  <button id="toggleButton">作業中</button>
-  <p id="status">現在の状態: 作業中</p>
+  <h1>作業タイマー</h1>
+  <div id="container">
+    <div id="info">
+      <p id="status">作業を開始してください。</p>
+    </div>
+    <div id="time">00:00:00.000</div>
+    <div id="buttons">
+      <button id="startButton">開始</button>
+      <button id="stopButton">中断</button>
+      <button id="resetButton">終了</button>
+    </div>
+  </div>
 
   <script>
-    const button = document.getElementById('toggleButton');
     const statusText = document.getElementById('status');
-    let isWorking = true;
+    let isWorking = false;
+
+    const time = document.getElementById('time');
+    const startButton = document.getElementById('startButton');
+    const stopButton = document.getElementById('stopButton');
+    const resetButton = document.getElementById('resetButton');
+
+    // 開始時間
+    let startTime;
+    // 停止時間
+    let stopTime = 0;
+    // タイムアウトID
+    let timeoutID;
+
+    // ボタンの初期状態
+    startButton.disabled = false;
+    stopButton.disabled = true;
+    resetButton.disabled = true;
+
+    // 時間を表示する関数
+    function displayTime() {
+      const currentTime = new Date(Date.now() - startTime + stopTime);
+      const h = String(currentTime.getHours()-9).padStart(2, '0');
+      const m = String(currentTime.getMinutes()).padStart(2, '0');
+      const s = String(currentTime.getSeconds()).padStart(2, '0');
+      const ms = String(currentTime.getMilliseconds()).padStart(3, '0');
+      time.textContent = `${h}:${m}:${s}.${ms}`;
+      timeoutID = setTimeout(displayTime, 10);
+    }
+
+    // スタートボタンが押された時
+    startButton.addEventListener('click', () => {
+      startButton.disabled = true;
+      stopButton.disabled = false;
+      resetButton.disabled = false;
+      startTime = Date.now();
+      displayTime();
+
+      // 作業状態の変更
+      isWorking = true;
+      statusText.textContent = '作業中...';
+
+      // サーバーに状態を送信
+      socket.send(JSON.stringify({ type: 'status', isWorking }));
+    });
+
+    // ストップボタンが押された時
+    stopButton.addEventListener('click', function() {
+      startButton.disabled = false;
+      stopButton.disabled = true;
+      resetButton.disabled = false;
+      clearTimeout(timeoutID);
+      stopTime += (Date.now() - startTime);
+
+      // 作業状態の変更
+      isWorking = false;
+      statusText.textContent = '休憩中';
+
+      // サーバーに状態を送信
+      socket.send(JSON.stringify({ type: 'status', isWorking }));
+    });
+
+    // 終了ボタンが押された時
+    resetButton.addEventListener('click', function() {
+      startButton.disabled = false;
+      stopButton.disabled = true;
+      resetButton.disabled = true;
+      clearTimeout(timeoutID);
+      stopTime = 0;
+
+      // 作業状態の変更
+      isWorking = false;
+      time.textContent = '00:00:00:000';
+      statusText.textContent = 'お疲れ様でした。';
+
+      // サーバーに状態を送信
+      socket.send(JSON.stringify({ type: 'status', isWorking }));
+    });
 
     // WebSocket接続を作成
     const socket = new WebSocket('ws://127.0.0.1:8000');
@@ -25,18 +111,7 @@
       const data = JSON.parse(event.data);
       if (data.isWorking !== undefined) {
         isWorking = data.isWorking;
-        button.textContent = isWorking ? '作業中' : '休憩中';
-        statusText.textContent = `現在の状態: ${isWorking ? '作業中' : '休憩中'}`;
       }
-    });
-
-    button.addEventListener('click', () => {
-      isWorking = !isWorking;
-      button.textContent = isWorking ? '作業中' : '休憩中';
-      statusText.textContent = `現在の状態: ${isWorking ? '作業中' : '休憩中'}`;
-
-      // サーバーに状態を送信
-      socket.send(JSON.stringify({ type: 'status', isWorking }));
     });
   </script>
 </body>
