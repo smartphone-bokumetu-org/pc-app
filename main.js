@@ -3,9 +3,9 @@ const WebSocket = require('ws'); // WebSocketモジュールを追加
 const bonjour = require('bonjour')(); // bonjourモジュールを追加
 
 let mainWindow;
-let isWorking = true; // 初期状態
+let isWorking;
 
-function createWindow () {
+async function createWindow () {
   // mDNSサービスを開始
   const bonjourService = bonjour.publish({ name: 'bokumetsu', type: 'http', port: 8000 });
   
@@ -30,8 +30,12 @@ function createWindow () {
       }
     });
 
-    // 初期状態を送信
-    ws.send(JSON.stringify({ isWorking }));
+    (async function sendStatus() {
+      while (true) {
+        ws.send(JSON.stringify({ isWorking }));
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    })();
   });
 
   console.log('WebSocket server running at ws://127.0.0.1:8000/');
