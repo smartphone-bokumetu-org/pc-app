@@ -1,10 +1,23 @@
 const { app, BrowserWindow } = require('electron');
 const WebSocket = require('ws'); // WebSocketモジュールを追加
+const bonjour = require('bonjour')(); // bonjourモジュールを追加
 
 let mainWindow;
 let isWorking = true; // 初期状態
 
 function createWindow () {
+  // mDNSサービスを開始
+  const bonjourService = bonjour.publish({ name: 'bokumetsu', type: 'http', port: 8000 });
+  
+  bonjourService.on('error', (error) => {
+    console.error('mDNS service error:', error);
+  });
+
+  bonjourService.on('up', () => {
+    console.log('mDNS service is up and running');
+    console.log('mDNS service published: http://bokumetsu.local');
+  });
+
   // WebSocketサーバーを作成
   const wss = new WebSocket.Server({ port: 8000 });
 
