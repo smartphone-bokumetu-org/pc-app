@@ -1,20 +1,19 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="ja" id="html">
 <head>
   <meta charset="UTF-8">
   <title>作業タイマー</title>
   <link rel="stylesheet" type="text/css" href="styles.css">
 </head>
-<body>
+<body id="body">
   <h1>作業タイマー</h1>
   <div id="container">
     <div id="info">
       <p id="status">作業を開始してください。</p>
     </div>
-    <div id="time">00:00:00.000</div>
+    <div id="time">25:00.000</div>
     <div id="buttons">
       <button id="startButton">開始</button>
-      <button id="stopButton">中断</button>
       <button id="resetButton">終了</button>
     </div>
   </div>
@@ -27,6 +26,17 @@
     const startButton = document.getElementById('startButton');
     const stopButton = document.getElementById('stopButton');
     const resetButton = document.getElementById('resetButton');
+    const body = document.getElementById('body');
+    const info = document.getElementById('info');
+
+    // 作業時間
+    // let countDownTime = 25 * 60 * 1000;
+    // 休憩時間
+    // let breakTime = 5 * 60 * 1000;
+
+    // テスト用（10秒, 5秒のサイクル）
+    let countDownTime = 10 * 1000;
+    let breakTime = 5 * 1000;
 
     // 開始時間
     let startTime;
@@ -37,47 +47,62 @@
 
     // ボタンの初期状態
     startButton.disabled = false;
-    stopButton.disabled = true;
     resetButton.disabled = true;
 
     // 時間を表示する関数
     function displayTime() {
       const currentTime = new Date(Date.now() - startTime + stopTime);
-      const h = String(currentTime.getHours()-9).padStart(2, '0');
-      const m = String(currentTime.getMinutes()).padStart(2, '0');
-      const s = String(currentTime.getSeconds()).padStart(2, '0');
-      const ms = String(currentTime.getMilliseconds()).padStart(3, '0');
-      time.textContent = `${h}:${m}:${s}.${ms}`;
+      let passTime;
+      let remainingTime;
+
+      // 経過時間の計算
+      if (isWorking) {
+        passTime = countDownTime - currentTime
+      } else {
+        passTime = breakTime - currentTime
+      }
+
+      // 作業中・休憩中の切替
+      if (passTime <= 0) {
+        startTime = Date.now();
+        stopTime = 0;
+        isWorking = !isWorking;
+        if (!isWorking) {
+          statusText.textContent = '休憩中';
+          body.style.backgroundColor = '#00ff7f';
+          info.style.color = '#00ff7f';
+          time.style.color = '#00ff7f';
+        } else {
+          statusText.textContent = '作業中...';
+          body.style.backgroundColor = '#1e90ff';
+          info.style.color = '#1e90ff';
+          time.style.color = '#1e90ff';
+        }
+      }
+
+      // サーバーに状態を送信
+      socket.send(JSON.stringify({ type: 'status', isWorking }));
+
+      remainingTime = new Date(passTime);
+      const m = String(remainingTime.getMinutes()).padStart(2, '0');
+      const s = String(remainingTime.getSeconds()).padStart(2, '0');
+      const ms = String(remainingTime.getMilliseconds()).padStart(3, '0');
+      time.textContent = `${m}:${s}.${ms}`;
       timeoutID = setTimeout(displayTime, 10);
     }
 
     // スタートボタンが押された時
     startButton.addEventListener('click', () => {
       startButton.disabled = true;
-      stopButton.disabled = false;
       resetButton.disabled = false;
       startTime = Date.now();
-      displayTime();
 
       // 作業状態の変更
       isWorking = true;
       statusText.textContent = '作業中...';
 
-      // サーバーに状態を送信
-      socket.send(JSON.stringify({ type: 'status', isWorking }));
-    });
-
-    // ストップボタンが押された時
-    stopButton.addEventListener('click', function() {
-      startButton.disabled = false;
-      stopButton.disabled = true;
-      resetButton.disabled = false;
-      clearTimeout(timeoutID);
-      stopTime += (Date.now() - startTime);
-
-      // 作業状態の変更
-      isWorking = false;
-      statusText.textContent = '休憩中';
+      // タイマーの起動
+      displayTime();
 
       // サーバーに状態を送信
       socket.send(JSON.stringify({ type: 'status', isWorking }));
@@ -86,15 +111,17 @@
     // 終了ボタンが押された時
     resetButton.addEventListener('click', function() {
       startButton.disabled = false;
-      stopButton.disabled = true;
       resetButton.disabled = true;
       clearTimeout(timeoutID);
       stopTime = 0;
 
       // 作業状態の変更
       isWorking = false;
-      time.textContent = '00:00:00:000';
+      time.textContent = '25:00:000';
       statusText.textContent = 'お疲れ様でした。';
+      body.style.backgroundColor = '#1e90ff';
+      info.style.color = '#1e90ff';
+      time.style.color = '#1e90ff';
 
       // サーバーに状態を送信
       socket.send(JSON.stringify({ type: 'status', isWorking }));
