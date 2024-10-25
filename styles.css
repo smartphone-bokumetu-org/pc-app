@@ -23,6 +23,7 @@ h1 {
     background-color: #ffffff;
     color: #1e90ff;
     text-align: center;
+    font-weight: bold;
 }
 
 #time {
@@ -40,8 +41,24 @@ h1 {
     text-align: center;
 }
 
-#startButton, #stopButton, #resetButton {
+#startButton, #resetButton, #breakButton, #restartButton {
     font-size: 1.5rem;
     border-radius: .3rem;
     box-shadow: 0 0 20px rgba(128, 128, 128, 0.25);
 }
+
+#set {
+    display: flex;
+    justify-content: center;
+}
+
+#work, #break {
+    font-size: 1.5rem;
+    border-radius: .3rem;
+    box-shadow: 0 0 20px rgba(128, 128, 128, 0.25);
+    width: 60px;
+    margin-right: 5px;
+    text-align: right;
+}
+
+

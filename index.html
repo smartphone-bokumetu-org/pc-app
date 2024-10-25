@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ja" id="html">
+<html lang="ja">
 <head>
   <meta charset="UTF-8">
   <title>作業タイマー</title>
@@ -11,11 +11,26 @@
     <div id="info">
       <p id="status">作業を開始してください。</p>
     </div>
-    <div id="time">25:00.000</div>
+    <div id="time">00:00.000</div>
     <div id="buttons">
       <button id="startButton">開始</button>
+      <button id="breakButton">休憩</button>
+      <button id="restartButton">再開</button>
       <button id="resetButton">終了</button>
     </div>
+    <div id="set">
+      <p><label for="work">作業</label><br><input id="work" type="number" min="1" max="99" step="0.1" value="25">分　</p>
+      <p></p>
+      <p><label for="break">休憩</label><br><input id="break" type="number" min="1" max="99" step="0.1" value="5">分 を繰り返す</p>
+    </div>
+  </div>
+
+  <!-- テスト用ボタン -->
+  <div style="text-align: center; margin-top: 50px;">
+    <button onclick="if (isWorking) notify('スマホを置いてください。', '#ff0000', 'alert.mp3')">スマホを触る（テスト用、後で消す）</button>
+  </div>
+  <div style="text-align: center; margin-top: 50px;">
+    <button onclick="if (isWorking) notify('疲れているようです。休憩に入りましょう。', '#deb887', 'alert.mp3')">疲労度を検知（テスト用、後で消す）</button>
   </div>
 
   <script>
@@ -24,19 +39,17 @@
 
     const time = document.getElementById('time');
     const startButton = document.getElementById('startButton');
-    const stopButton = document.getElementById('stopButton');
+    const breakButton = document.getElementById('breakButton');
+    const restartButton = document.getElementById('restartButton');
     const resetButton = document.getElementById('resetButton');
     const body = document.getElementById('body');
     const info = document.getElementById('info');
+    const workTimeInput = document.getElementById('work');
+    const breakTimeInput = document.getElementById('break');
 
-    // 作業時間
-    // let countDownTime = 25 * 60 * 1000;
-    // 休憩時間
-    // let breakTime = 5 * 60 * 1000;
-
-    // テスト用（10秒, 5秒のサイクル）
-    let countDownTime = 10 * 1000;
-    let breakTime = 5 * 1000;
+    // 作業時間, 休憩時間（25分, 5分のサイクル）
+    let countDownTime;
+    let breakTime;
 
     // 開始時間
     let startTime;
@@ -47,6 +60,8 @@
 
     // ボタンの初期状態
     startButton.disabled = false;
+    breakButton.disabled = true;
+    restartButton.disabled = true;
     resetButton.disabled = true;
 
     // 時間を表示する関数
@@ -57,9 +72,9 @@
 
       // 経過時間の計算
       if (isWorking) {
-        passTime = countDownTime - currentTime
+        passTime = countDownTime - currentTime;
       } else {
-        passTime = breakTime - currentTime
+        passTime = breakTime - currentTime;
       }
 
       // 作業中・休憩中の切替
@@ -69,19 +84,25 @@
         isWorking = !isWorking;
         if (!isWorking) {
           statusText.textContent = '休憩中';
-          body.style.backgroundColor = '#00ff7f';
-          info.style.color = '#00ff7f';
-          time.style.color = '#00ff7f';
+          body.style.backgroundColor = '#00e673';
+          info.style.color = '#00e673';
+          time.style.color = '#00e673';
+          breakButton.disabled = true;
+          restartButton.disabled = false;
+          notify('休憩時間です。', '#00e673', 'alert.mp3');
         } else {
           statusText.textContent = '作業中...';
           body.style.backgroundColor = '#1e90ff';
           info.style.color = '#1e90ff';
           time.style.color = '#1e90ff';
+          breakButton.disabled = false;
+          restartButton.disabled = true;
+          notify('作業を再開してください。', '#1e90ff', 'alert.mp3');
         }
-      }
 
-      // サーバーに状態を送信
-      socket.send(JSON.stringify({ type: 'status', isWorking }));
+        // サーバーに状態を送信
+        socket.send(JSON.stringify({ type: 'status', isWorking }));
+      }
 
       remainingTime = new Date(passTime);
       const m = String(remainingTime.getMinutes()).padStart(2, '0');
@@ -91,37 +112,156 @@
       timeoutID = setTimeout(displayTime, 10);
     }
 
-    // スタートボタンが押された時
+    // 通知用ウィンドウを開く関数
+    // notify('メッセージ', 'カラーコード', 'オーディオファイル名');
+    function notify(msg, color, audioFile) {
+      // 効果音を鳴らす
+      let audio = new Audio('audio/'+audioFile);
+      audio.play();
+
+      // 通知用ウィンドウを開く
+      let notification = window.open('', '_blank');
+      let file = '\
+        <title>通知</title>\
+        <body style="background-color: '+ color +'; height: 100vh; text-align: center; color: #ffffff; font-weight: bold;">\
+          <div style="margin-top: 40vh;">\
+            <h1>'+ msg +'</h1>\
+            <p><a href="#" onClick="window.close();" style="color: #ffffff;">このウィンドウを閉じる</a></p>\
+          </div>\
+        </body>\
+      ';
+      notification.document.write(file);
+      notification.document.close();
+
+      // 5秒後、自動でウィンドウクローズ
+      setTimeout(() => {
+        notification.close();
+      }, 5 * 1000);
+    }
+
+    // inputタグの値が正しいか判定する関数
+    function check() {
+      let w = Number(workTimeInput.value);
+      let b = Number(breakTimeInput.value);
+      if (w > 0 && w < 100 && b > 0 && b < 100) {
+        return true;
+      } else {
+        workTimeInput.value = '';
+        breakTimeInput.value = '';
+        return false;
+      }
+    }
+
+    // 開始ボタンが押された時
     startButton.addEventListener('click', () => {
+      if (check()) {
+        countDownTime = Number(workTimeInput.value) * 60 * 1000;
+        breakTime = Number(breakTimeInput.value) * 60 * 1000;
+        workTimeInput.disabled = true;
+        breakTimeInput.disabled = true;
+      } else {
+        return;
+      }
+
       startButton.disabled = true;
+      breakButton.disabled = false;
+      restartButton.disabled = true;
       resetButton.disabled = false;
       startTime = Date.now();
 
       // 作業状態の変更
-      isWorking = true;
-      statusText.textContent = '作業中...';
+      isWorking = !isWorking;
+      statusText.textContent = isWorking ? '作業中...' : '休憩中';
 
-      // タイマーの起動
-      displayTime();
+      // 効果音を鳴らす
+      let audio = new Audio('./audio/alert.mp3');
+      audio.play();
 
       // サーバーに状態を送信
       socket.send(JSON.stringify({ type: 'status', isWorking }));
+
+      // タイマーの起動
+      displayTime();
+    });
+
+    // 休憩ボタンが押された時
+    breakButton.addEventListener('click', () => {
+      // 作業状態の変更
+      isWorking = false;
+
+      // 作業中・休憩中の切替
+      statusText.textContent = '休憩中';
+      body.style.backgroundColor = '#00e673';
+      info.style.color = '#00e673';
+      time.style.color = '#00e673';
+      breakButton.disabled = true;
+      restartButton.disabled = false;
+
+      // 効果音を鳴らす
+      let audio = new Audio('./audio/alert.mp3');
+      audio.play();
+
+      // サーバーに状態を送信
+      socket.send(JSON.stringify({ type: 'status', isWorking }));
+
+      // タイマーをリセット
+      startTime = Date.now();
+      stopTime = 0;
+      clearTimeout(timeoutID);
+      displayTime();
+    });
+
+    // 再開ボタンが押された時
+    restartButton.addEventListener('click', () => {
+      // 作業状態の変更
+      isWorking = true;
+
+      // 作業中・休憩中の切替
+      statusText.textContent = '作業中...';
+      body.style.backgroundColor = '#1e90ff';
+      info.style.color = '#1e90ff';
+      time.style.color = '#1e90ff';
+      breakButton.disabled = false;
+      restartButton.disabled = true;
+
+      // 効果音を鳴らす
+      let audio = new Audio('./audio/alert.mp3');
+      audio.play();
+
+      // サーバーに状態を送信
+      socket.send(JSON.stringify({ type: 'status', isWorking }));
+
+      // タイマーをリセット
+      startTime = Date.now();
+      stopTime = 0;
+      clearTimeout(timeoutID);
+      displayTime();
     });
 
     // 終了ボタンが押された時
     resetButton.addEventListener('click', function() {
       startButton.disabled = false;
+      breakButton.disabled = true;
+      restartButton.disabled = true;
       resetButton.disabled = true;
       clearTimeout(timeoutID);
       stopTime = 0;
+      countDownTime = 0;
+      breakTime = 0;
+      workTimeInput.disabled = false;
+      breakTimeInput.disabled = false;
 
       // 作業状態の変更
       isWorking = false;
-      time.textContent = '25:00:000';
+      time.textContent = '00:00:000';
       statusText.textContent = 'お疲れ様でした。';
       body.style.backgroundColor = '#1e90ff';
       info.style.color = '#1e90ff';
       time.style.color = '#1e90ff';
+
+      // 効果音を鳴らす
+      let audio = new Audio('./audio/alert.mp3');
+      audio.play();
 
       // サーバーに状態を送信
       socket.send(JSON.stringify({ type: 'status', isWorking }));
