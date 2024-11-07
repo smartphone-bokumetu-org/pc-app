@@ -6,6 +6,7 @@ from threading import Lock
 
 # スレッド間のデータ共有を安全に行うためのロック
 data_lock = Lock()
+data_dict = {}
 
 # ユーザープロファイルの定義
 class UserProfile:
@@ -25,11 +26,14 @@ class UserProfile:
             self.baseline_std_deviation = variance ** 0.5
 
             self.calibrated = True
-            print("キャリブレーションが完了しました。")
-            print(f"ベースラインWPM: {self.baseline_wpm:.2f}")
-            print(f"ベースライン標準偏差: {self.baseline_std_deviation:.4f}")
+            # print("キャリブレーションが完了しました。")
+            # print(f"ベースラインWPM: {self.baseline_wpm:.2f}")
+            # print(f"ベースライン標準偏差: {self.baseline_std_deviation:.4f}")
+            data_dict['baseline_wpm'] = self.baseline_wpm
+            data_dict['baseline_std_deviation'] = self.baseline_std_deviation
         else:
-            print("キャリブレーションに十分なデータがありません。もう少しタイピングしてください。")
+            # print("キャリブレーションに十分なデータがありません。もう少しタイピングしてください。")
+            pass
 
 # ユーザープロファイルのインスタンス
 user_profile = UserProfile()
@@ -98,11 +102,13 @@ def calculate_wpm():
                     typing_speed = 0
             else:
                 typing_speed = 0
-        print(f"タイピング速度: {typing_speed:.2f} WPM")
+        # print(f"タイピング速度: {typing_speed:.2f} WPM")
+        data_dict['typing_speed'] = typing_speed
 
         # 速度低下の検出（疲労の可能性）
         if user_profile.calibrated and typing_speed < user_profile.baseline_wpm * 0.8:
-            print("速度低下が顕著です。疲労の可能性があります。")
+            # print("速度低下が顕著です。疲労の可能性があります。")
+            pass
 
 # 疲労度を計算する関数
 def calculate_fatigue_level():
@@ -143,11 +149,15 @@ def calculate_fatigue_level():
         backspace_counter = 0
         delete_counter = 0
 
-    print("推定疲労度:", fatigue_level)
+    # print("推定疲労度:", fatigue_level)
+    data_dict['fatigue_level'] = fatigue_level
+    pass
 # タイピングの一貫性を計算する関数
 def calculate_typing_consistency():
     std_deviation = get_key_intervals_std_deviation()
-    print(f"タイピングの一貫性（標準偏差）: {std_deviation:.4f}")
+    # print(f"タイピングの一貫性（標準偏差）: {std_deviation:.4f}")
+    data_dict['typing_consistency'] = std_deviation
+    pass
 
 # キーが押されたときの処理
 def on_press(key):
@@ -164,8 +174,12 @@ def on_press(key):
 
     try:
         print(f'Key {key.char} pressed', flush=True)
+        data_dict['key_pressed'] = key.char
+        print(data_dict)
+        pass
     except AttributeError:
-        print(f'Special key {key} pressed', flush=True)
+        # print(f'Special key {key} pressed', flush=True)
+        pass
 
     with data_lock:
         # バックスペースキーの使用頻度を計測
@@ -188,7 +202,10 @@ def on_press(key):
     if user_profile.calibrated:
         rhythm_difference = abs(get_key_intervals_std_deviation() - user_profile.baseline_std_deviation)
         if rhythm_difference > RHYTHM_THRESHOLD:
-            print("キー入力リズムの乱れが検出されました。")
+            # print("キー入力リズムの乱れが検出されました。")
+            # print(f"キー入力リズムの乱れ: {rhythm_difference:.4f}")
+            data_dict['rhythm_difference'] = rhythm_difference
+            pass
 
     # タイピングの一貫性を計算
     calculate_typing_consistency()

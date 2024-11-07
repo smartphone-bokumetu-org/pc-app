@@ -49,8 +49,7 @@ async function createWindow () {
   });
 
   pythonProcess.stdout.on('data', (data) => {
-    console.log(`Python stdout: ${data}`);
-    // 
+    handlePythonOutput(data.toString());
   });
 
   pythonProcess.stderr.on('data', (data) => {
@@ -66,6 +65,7 @@ async function createWindow () {
     height: 600,
     webPreferences: {
       nodeIntegration: true,
+      contextIsolation: false,
     },
   });
 
@@ -88,3 +88,25 @@ app.on('activate', function () {
     createWindow();
   }
 });
+
+function handlePythonOutput(output) {
+  // 改行を検知して、それ以降を削除
+  const cleanOutput = output.split('\n')[0];
+  
+  try {
+    // シングルクォートをダブルクォートに置き換えてJSONとしてデータを解析
+    const jsonString = cleanOutput.replace(/'/g, '"');
+    const data = JSON.parse(jsonString);
+    console.log(data);
+
+    // fatigue_levelが一定の値を超えたときにメッセージを送信
+    const fatigueThreshold = 2.0; // ここで閾値を設定
+    if (data.fatigue_level >= fatigueThreshold) {
+      mainWindow.webContents.send('fatigue-alert', '疲れているようです。休憩に入りましょう。');
+      console.log('fatigue-alert sent');
+    }
+
+  } catch (error) {
+    console.error('JSON parsing error:', error);
+  }
+}

@@ -34,6 +34,8 @@
   </div>
 
   <script>
+    const { ipcRenderer } = require('electron');
+
     const statusText = document.getElementById('status');
     let isWorking = false;
 
@@ -279,6 +281,11 @@
       if (data.isWorking !== undefined) {
         isWorking = data.isWorking;
       }
+    });
+
+
+    ipcRenderer.on('fatigue-alert', (event, message) => {
+      if (isWorking) notify('疲れているようです。休憩に入りましょう。', '#deb887', 'alert.mp3');
     });
   </script>
 </body>
