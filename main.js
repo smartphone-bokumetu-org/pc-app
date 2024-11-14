@@ -100,7 +100,7 @@ function handlePythonOutput(output) {
     console.log(data);
 
     // fatigue_levelが一定の値を超えたときにメッセージを送信
-    const fatigueThreshold = 2.0; // ここで閾値を設定
+    const fatigueThreshold = 0.8; // ここで閾値を設定
     if (data.fatigue_level >= fatigueThreshold) {
       mainWindow.webContents.send('fatigue-alert', '疲れているようです。休憩に入りましょう。');
       console.log('fatigue-alert sent');
